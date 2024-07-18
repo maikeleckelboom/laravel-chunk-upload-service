@@ -3,10 +3,13 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -49,5 +52,25 @@ class User extends Authenticatable
     public function files(): HasMany
     {
         return $this->hasMany(File::class);
+    }
+
+
+  public function getStoragePath(): string
+  {
+      return "users/{$this->id}";
+  }
+
+    /**
+     * Gets the storage instance for the user.
+     */
+    public function getStorageInstance(): Filesystem|FilesystemAdapter
+    {
+        $root = storage_path("app/users/{$this->id}");
+
+        if (!is_writable($root)) {
+            mkdir($root, 0777, true);
+        }
+
+        return Storage::createLocalDriver(["root" => $root]);
     }
 }

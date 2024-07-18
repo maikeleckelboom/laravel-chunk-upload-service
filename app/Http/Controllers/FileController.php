@@ -13,20 +13,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class FileController extends Controller
 {
-    public function upload(Request $request)
-    {
-
-        \Validator::make($request->all(), [
-            'identifier' => 'required',
-            'chunk_index' => 'required|integer',
-            'chunk_data' => 'required',
-        ]);
-
-        $user = $request->user();
-
-
-    }
-
     private string $chunksDir = 'chunks';
 
     public function uploadChunk(Request $request)
@@ -47,15 +33,15 @@ class FileController extends Controller
         }
 
         $user = $request->user();
-
         $filename = $request->input('filename');
-        $totalChunks = $request->input('totalChunks');
         $chunkIndex = $request->input('chunkIndex');
+        $currentChunk = $request->file('currentChunk');
+        $totalChunks = $request->input('totalChunks');
+        
+        $chunkDir = $user->getStoragePath() . '/' . $this->chunksDir;
         $chunkFilename = $filename . '.' . $chunkIndex;
 
-        $currentChunk = $request->file('currentChunk');
-
-        $currentChunk->storeAs($this->chunksDir, $chunkFilename);
+        $currentChunk->storeAs($chunkDir, $chunkFilename);
 
         if ((int)$chunkIndex === (int)$totalChunks - 1) {
 

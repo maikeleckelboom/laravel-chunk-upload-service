@@ -52,6 +52,7 @@
             "@php artisan down",
             "@php artisan optimize",
             "@php artisan migrate:fresh --seed --force --ansi",
+            "@php artisan storage:clear",
             "@php artisan up"
         ]
     },
