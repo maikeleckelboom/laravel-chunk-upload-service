@@ -61,7 +61,7 @@ class ClearStorageCommand extends Command
 
         FileSystem::delete($storagePath);
 
-        $this->info("Clear storage for user {$user->id}.");
+        $this->info("Storage for user {$user->id} has been cleared.");
         $this->newLine();
 
         return self::SUCCESS_CODE;

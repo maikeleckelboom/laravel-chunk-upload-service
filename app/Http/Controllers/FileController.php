@@ -38,77 +38,57 @@ class FileController extends Controller
         }
 
         $user = $request->user();
-        $filename = Str::lower($request->input('filename'));
+        $filename = $request->input('filename');
         $chunkIndex = (int)$request->input('chunkIndex');
         $totalChunks = (int)$request->input('totalChunks');
         $currentChunk = $request->file('currentChunk');
 
-
-        $chunkDir = $user->getStoragePath() . '/' . $this->chunksDirName;
+        $chunkPath = $user->getStoragePath() . '/' . $this->chunksDirName;
         $chunkFilename = $filename . '.' . $chunkIndex;
+        $currentChunk->storeAs($chunkPath, $chunkFilename);
 
-        $currentChunk->storeAs($chunkDir, $chunkFilename);
+        $chunkNumber = ++$chunkIndex;
 
-        $upload = $user->uploads()->updateOrCreate(
-            [
-                'filename' => $filename,
+        $upload = $user->uploads()->updateOrCreate(['filename' => $filename], [
+            'total_chunks' => $totalChunks,
+            'uploaded_chunks' => $chunkNumber,
+            'status' => 'pending'
+        ]);
+
+        if ($chunkNumber !== $totalChunks) {
+            return response([
                 'status' => 'pending',
-            ],
-            [
-                'total_chunks' => $totalChunks,
-                'uploaded_chunks' => $chunkNumber = ++$chunkIndex,
-            ]
-        );
+                'progress' => $chunkNumber / $totalChunks * 100,
+                'message' => 'uploaded ' . $chunkNumber . ' of ' . $totalChunks . ' chunks.',
+            ], Response::HTTP_OK);
+        }
 
-        if ($chunkNumber === $totalChunks) {
-
-            try {
-                $this->assembleChunks($filename, $totalChunks);
-                $upload->delete();
-            } catch (Exception $e) {
-                return response([
-                    'message' => 'An error occurred while assembling chunks.',
-                    'error' => $e->getMessage(),
-                ], Response::HTTP_INTERNAL_SERVER_ERROR);
-            }
+        try {
+            $this->assembleChunks($filename, $totalChunks);
+            $upload->delete();
 
             return response([
                 'status' => 'completed',
                 'message' => 'uploaded ' . $totalChunks . ' chunks.',
             ], Response::HTTP_OK);
-        }
 
-        return response([
-            'status' => 'pending',
-            'progress' => $chunkNumber / $totalChunks * 100,
-            'message' => 'uploaded ' . $chunkNumber . ' of ' . $totalChunks . ' chunks.',
-        ], Response::HTTP_OK);
+        } catch (Exception $e) {
+            return response([
+                'message' => 'An error occurred while assembling chunks.',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     private function assembleChunks(string $filename, int $totalChunks)
     {
         $storagePath = Auth::user()->getStoragePath();
-        $uploadsDir = $storagePath . '/' . $this->uploadsDirName;
-
-        if (!Storage::exists($uploadsDir)) {
-            Storage::makeDirectory($uploadsDir);
-        }
-
-        $destination = fopen(storage_path('app/' . $uploadsDir . '/' . $filename), 'wb');
+        $source = $storagePath . '/' . $this->chunksDirName . '/' . $filename;
+        $destination = $storagePath . '/' . $this->uploadsDirName . '/' . $filename;
 
         for ($i = 0; $i < $totalChunks; $i++) {
-            $chunkPath = $storagePath . '/' . $this->chunksDirName . '/' . $filename . '.' . $i;
-            $chunkStoragePath = storage_path('app/' . $chunkPath);
-
-            $chunkFile = fopen($chunkStoragePath, 'rb');
-            stream_copy_to_stream($chunkFile, $destination);
-            fclose($chunkFile);
+            Storage::move($source . '.' . $i, $destination);
         }
-
-        fclose($destination);
-
-
-        Storage::delete($storagePath . '/' . $this->chunksDirName . '/' . $filename . '.*');
 
     }
 
