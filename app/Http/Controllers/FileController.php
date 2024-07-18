@@ -64,31 +64,19 @@ class FileController extends Controller
         $sourcePath = "$storagePrefix/{$this->chunksDir}/$identifier/{$filename}";
         $destination = "{$storagePrefix}/{$this->uploadsDir}/$filename";
 
-        for ($i = 1; $i <= $totalChunks; $i++) {
-            $chunk = Storage::get("$sourcePath.$i");
-            Storage::append($destination, $chunk);
+        if (!Storage::directoryExists($storagePrefix . '/' . $this->uploadsDir)) {
+            Storage::makeDirectory($storagePrefix . '/' . $this->uploadsDir);
         }
-    }
 
-    //    private function assembleChunksUsingNativePhp(string $identifier, string $filename, int $totalChunks)
-//    {
-//        $storagePrefix = Auth::user()->getStoragePrefix();
-//        $sourcePath = "$storagePrefix/{$this->chunksDir}/$identifier";
-//        $destination = "{$storagePrefix}/{$this->uploadsDir}/$filename";
-//
-//        if(!Storage::directoryExists($storagePrefix . '/' . $this->uploadsDir)){
-//            Storage::makeDirectory($storagePrefix . '/' . $this->uploadsDir);
-//        }
-//
-//        $destinationFile = fopen(storage_path("app/$destination"), 'wb');
-//
-//        for ($i = 1; $i <= $totalChunks; $i++) {
-//            $chunk = fopen(storage_path("app/$sourcePath.$i"), 'rb');
-//            stream_copy_to_stream($chunk, $destinationFile);
-//            fclose($chunk);
-//        }
-//
-//        fclose($destinationFile);
-//    }
+        $destinationFile = fopen(storage_path("app/$destination"), 'wb');
+
+        for ($i = 1; $i <= $totalChunks; $i++) {
+            $chunk = fopen(storage_path("app/$sourcePath.$i"), 'rb');
+            stream_copy_to_stream($chunk, $destinationFile);
+            fclose($chunk);
+        }
+
+        fclose($destinationFile);
+    }
 
 }
