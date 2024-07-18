@@ -13,14 +13,12 @@ return new class extends Migration {
     {
         Schema::create('files', function (Blueprint $table) {
             $table->id();
-            $table->string('file_name');
-            $table->string('file_path')->nullable();
+            $table->foreignIdFor(User::class)->constrained();
 
+            $table->string('original_name');
             $table->integer('total_chunks');
             $table->integer('uploaded_chunks')->default(0);
-
-            $table->enum('upload_status', ['pending', 'completed', 'failed'])->default('pending');
-            $table->foreignIdFor(User::class)->constrained();
+            $table->enum('upload_status', ['paused', 'pending', 'completed', 'failed'])->default('paused');
             $table->timestamps();
         });
     }

@@ -7,17 +7,16 @@ use App\Models\Chunk;
 use App\Models\File;
 use Auth;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
 
 class FileController extends Controller
 {
-    private string $chunksDir = 'chunks';
-    private string $uploadsDir = 'uploads';
+    private string $chunksDirName = 'chunks';
+    private string $uploadsDirName = 'uploads';
 
-    public function uploadChunk(Request $request)
+    public function upload(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'filename' => 'required|string',
@@ -34,37 +33,36 @@ class FileController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = $request->user();
         $filename = $request->input('filename');
-        $chunkIndex = $request->input('chunkIndex');
+        $chunkIndex = (int)$request->input('chunkIndex');
+        $totalChunks = (int)$request->input('totalChunks');
         $currentChunk = $request->file('currentChunk');
-        $totalChunks = $request->input('totalChunks');
 
-        $chunkDir = $user->getStoragePath() . '/' . $this->chunksDir;
+        $chunkDir = $request->user()->getStoragePath() . '/' . $this->chunksDirName;
         $chunkFilename = $filename . '.' . $chunkIndex;
 
         $currentChunk->storeAs($chunkDir, $chunkFilename);
 
-        if ((int)$chunkIndex === (int)$totalChunks - 1) {
-
-            logger()->info('All chunks uploaded 🚀');
-
+        if ($chunkIndex === $totalChunks - 1) {
             $this->assembleChunks($filename, $totalChunks);
-
-        } else {
-
-
-            return response('Chunk uploaded successfully', Response::HTTP_OK);
+            return response([
+                'status' => 'completed',
+                'progress' => 100,
+                'message' => 'uploaded ' . $totalChunks . ' chunks.',
+            ], Response::HTTP_OK);
         }
 
-        return response('Chunk uploaded successfully', Response::HTTP_OK);
-
+        return response([
+            'status' => 'pending',
+            'progress' => ($chunkIndex + 1) / $totalChunks * 100,
+            'message' => 'uploaded ' . ($chunkIndex + 1) . ' of ' . $totalChunks . ' chunks.',
+        ], Response::HTTP_OK);
     }
 
-    private function assembleChunks($filename, $totalChunks)
+    private function assembleChunks(string $filename, int $totalChunks)
     {
-        $storageDir = Auth::user()->getStoragePath();
-        $uploadsDir = $storageDir . '/' . $this->uploadsDir;
+        $storagePath = Auth::user()->getStoragePath();
+        $uploadsDir = $storagePath . '/' . $this->uploadsDirName;
 
         if (!Storage::exists($uploadsDir)) {
             Storage::makeDirectory($uploadsDir);
@@ -73,13 +71,11 @@ class FileController extends Controller
         $destination = fopen(storage_path('app/' . $uploadsDir . '/' . $filename), 'wb');
 
         for ($i = 0; $i < $totalChunks; $i++) {
-            $chunkPath = $storageDir . '/' . $this->chunksDir . '/' . $filename . '.' . $i;
+            $chunkPath = $storagePath . '/' . $this->chunksDirName . '/' . $filename . '.' . $i;
             $chunkStoragePath = storage_path('app/' . $chunkPath);
-
             $chunkFile = fopen($chunkStoragePath, 'rb');
             stream_copy_to_stream($chunkFile, $destination);
             fclose($chunkFile);
-
             Storage::delete($chunkPath);
         }
 

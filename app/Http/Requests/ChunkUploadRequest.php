@@ -24,9 +24,9 @@ class ChunkUploadRequest extends FormRequest
     {
         return [
             'filename' => 'required|string',
-            'chunkNumber' => 'required|integer|min:1',
-            'totalChunks' => 'required|integer|min:1',
-            'totalSize' => 'required|integer|min:1',
+            'currentChunk' => 'required|file',
+            'totalChunks' => 'required|integer',
+            'chunkIndex' => 'required|integer'
         ];
     }
 }
