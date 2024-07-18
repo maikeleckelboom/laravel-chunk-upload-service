@@ -36,9 +36,18 @@ class FileController extends Controller
         ]);
 
         if ($chunkNumber !== $totalChunks) {
+
+            if ($request->has('chunkSize') && $request->has('totalSize')) {
+                $chunkSize = (int)$request->input('chunkSize');
+                $totalSize = (int)$request->input('totalSize');
+                $uploadedSize = $chunkSize * $chunkNumber;
+                $uploadedSizeMessage = "Uploaded {$uploadedSize} of {$totalSize} bytes";
+            }
+
             return response([
                 'status' => 'pending',
-                'progress' => $chunkNumber / $totalChunks * 100
+                'progress' => $chunkNumber / $totalChunks * 100,
+                'message' => $uploadedSizeMessage ?? null
             ], Response::HTTP_OK);
         }
 

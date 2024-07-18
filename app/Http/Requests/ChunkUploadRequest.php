@@ -28,8 +28,8 @@ class ChunkUploadRequest extends FormRequest
             'chunkNumber' => 'required|integer|min:1',
             'totalChunks' => 'required|integer|min:1',
             'currentChunk' => 'required|file',
-//            'chunkSize' => 'sometimes|integer',
-//            'totalSize' => 'sometimes|integer',
+            'chunkSize' => 'sometimes|integer',
+            'totalSize' => 'sometimes|integer',
         ];
     }
 }
