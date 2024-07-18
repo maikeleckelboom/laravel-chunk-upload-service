@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ChunkUploadRequest;
-use DB;
+use App\Models\File;
+use App\Models\User;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -52,24 +53,16 @@ class FileController extends Controller
         try {
             $this->assembleChunks($identifier, $filename, $totalChunks);
 
-            DB::transaction(function () use ($upload, $user, $filename) {
-                $this->createFileRecord($user, $filename);
-                $upload->chunks()->delete();
-                $upload->delete();
-            });
+            $file = $this->createFileRecord($user, $filename);
+            $upload->chunks()->delete();
+            $upload->delete();
 
             return response([
-                'status' => 'completed',
-                'identifier' => $identifier,
-                'filename' => $filename,
-                'url' => Storage::url($user->getStoragePrefix() . '/' . $this->uploadsDir . '/' . $filename)
-            ], Response::HTTP_OK);
+                'file' => $file,
+                'status' => 'created-file',
+            ], Response::HTTP_CREATED);
         } catch (Exception $e) {
-            return response([
-                'status' => 'error-assembling-chunks',
-                'message' => $e->getMessage(),
-                'line' => $e->getLine(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response($e, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -103,15 +96,11 @@ class FileController extends Controller
         fclose($destinationFile);
     }
 
-    /**
-     * @param mixed $user
-     * @param mixed $filename
-     * @return void
-     */
-    public function createFileRecord(mixed $user, mixed $filename): void
+
+    private function createFileRecord(User $user, string $filename): File
     {
         $path = $user->getStoragePrefix() . '/' . $this->uploadsDir . '/' . $filename;
-        $user->files()->updateOrCreate(['path' => $path], [
+        return $user->files()->updateOrCreate(['path' => $path], [
             'name' => pathinfo($filename, PATHINFO_FILENAME),
             'size' => Storage::size($path),
             'mime_type' => Storage::mimeType($path),

@@ -17,9 +17,4 @@ class File extends Model
     {
         return $this->belongsTo(User::class);
     }
-
-    public function chunks(): HasMany
-    {
-        return $this->hasMany(Chunk::class);
-    }
 }
