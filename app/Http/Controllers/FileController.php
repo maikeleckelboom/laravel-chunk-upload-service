@@ -29,10 +29,8 @@ class FileController extends Controller
 
         $currentChunk->storeAs($chunkPath, "{$identifier}/{$filename}.{$chunkNumber}");
 
-        $upload = $user->uploads()->updateOrCreate([
-            'identifier' => $identifier,
-            'filename' => $filename
-        ], [
+        $upload = $user->uploads()->updateOrCreate(['identifier' => $identifier], [
+            'filename' => $filename,
             'total_chunks' => $totalChunks,
             'uploaded_chunks' => $chunkNumber,
             'status' => 'pending'
@@ -54,12 +52,14 @@ class FileController extends Controller
             $this->assembleChunks($identifier, $filename, $totalChunks);
 
             $file = $this->createFileRecord($user, $filename);
+
             $upload->chunks()->delete();
             $upload->delete();
 
             return response([
+                'status' => 'created',
+                'progress' => 100,
                 'file' => $file,
-                'status' => 'created-file',
             ], Response::HTTP_CREATED);
         } catch (Exception $e) {
             return response($e, Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -95,7 +95,6 @@ class FileController extends Controller
 
         fclose($destinationFile);
     }
-
 
     private function createFileRecord(User $user, string $filename): File
     {
