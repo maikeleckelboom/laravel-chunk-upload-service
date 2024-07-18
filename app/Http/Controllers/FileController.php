@@ -33,7 +33,7 @@ class FileController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'filename' => 'required|string',
-            'currentChunk' => 'required',
+            'currentChunk' => 'required|file',
             'totalChunks' => 'required|integer',
             'chunkIndex' => 'required|integer',
         ]);
@@ -49,15 +49,15 @@ class FileController extends Controller
         $user = $request->user();
 
         $filename = $request->input('filename');
-        $currentChunk = $request->input('currentChunk');
         $totalChunks = $request->input('totalChunks');
         $chunkIndex = $request->input('chunkIndex');
         $chunkFilename = $filename . '.' . $chunkIndex;
-        $chunkPath = $this->chunksDir . '/' . $chunkFilename;
 
-        Storage::disk('local')->put($chunkPath, $currentChunk);
+        $currentChunk = $request->file('currentChunk');
 
-        if ((int)$currentChunk === (int)$totalChunks) {
+        $currentChunk->storeAs($this->chunksDir, $chunkFilename);
+
+        if ((int)$chunkIndex === (int)$totalChunks - 1) {
 
             logger()->info('All chunks uploaded 🚀');
 
@@ -68,15 +68,19 @@ class FileController extends Controller
                 ->catch(function ($err) {
                     return response('Error assembling chunks: ' . $err, Response::HTTP_INTERNAL_SERVER_ERROR);
                 });
+
         } else {
+
+
             return response('Chunk uploaded successfully', Response::HTTP_OK);
         }
 
-        
+
     }
 
     private function assembleChunks($filename, $totalChunks)
     {
+        // fails here
         $destination = fopen(storage_path('app/uploads/' . $filename), 'wb');
         for ($i = 1; $i <= $totalChunks; $i++) {
             $chunkPath = storage_path('app/' . $this->chunksDir . '/' . $filename . '.' . $i);
