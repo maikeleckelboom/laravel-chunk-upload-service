@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ChunkUploadRequest;
+use DB;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
+
 
 class FileController extends Controller
 {
@@ -35,40 +37,53 @@ class FileController extends Controller
             'status' => 'pending'
         ]);
 
+        $upload->chunks()->updateOrCreate(['chunk_number' => $chunkNumber], [
+            'chunk' => $currentChunk,
+            'chunk_size' => $currentChunk->getSize()
+        ]);
+
         if ($chunkNumber !== $totalChunks) {
-
-            if ($request->has('chunkSize') && $request->has('totalSize')) {
-                $chunkSize = (int)$request->input('chunkSize');
-                $totalSize = (int)$request->input('totalSize');
-                $uploadedSize = $chunkSize * $chunkNumber;
-                $uploadedSizeMessage = "Uploaded {$uploadedSize} of {$totalSize} bytes";
-            }
-
             return response([
                 'status' => 'pending',
                 'progress' => $chunkNumber / $totalChunks * 100,
-                'message' => $uploadedSizeMessage ?? null
             ], Response::HTTP_OK);
         }
 
         try {
             $this->assembleChunks($identifier, $filename, $totalChunks);
-            $upload->delete();
+
+            DB::transaction(function () use ($upload, $user, $filename) {
+                $this->createFileRecord($user, $filename);
+                $upload->chunks()->delete();
+                $upload->delete();
+            });
 
             return response([
                 'status' => 'completed',
-                'message' => "Uploaded {$filename}"
+                'identifier' => $identifier,
+                'filename' => $filename,
+                'url' => Storage::url($user->getStoragePrefix() . '/' . $this->uploadsDir . '/' . $filename)
             ], Response::HTTP_OK);
         } catch (Exception $e) {
             return response([
-                'message' => 'An error occurred while assembling chunks.',
-                'error' => $e->getMessage(),
+                'status' => 'error-assembling-chunks',
+                'message' => $e->getMessage(),
+                'line' => $e->getLine(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
+    /**
+     * @throws Exception
+     */
     private function assembleChunks(string $identifier, string $filename, int $totalChunks)
     {
+        $upload = Auth::user()->uploads()->where('identifier', $identifier)->firstOrFail();
+
+        if ($upload->chunks()->count() !== $totalChunks) {
+            throw new Exception("Missing chunks for upload $identifier");
+        }
+
         $storagePrefix = Auth::user()->getStoragePrefix();
         $sourcePath = "$storagePrefix/{$this->chunksDir}/$identifier/{$filename}";
         $destination = "{$storagePrefix}/{$this->uploadsDir}/$filename";
@@ -88,4 +103,20 @@ class FileController extends Controller
         fclose($destinationFile);
     }
 
+    /**
+     * @param mixed $user
+     * @param mixed $filename
+     * @return void
+     */
+    public function createFileRecord(mixed $user, mixed $filename): void
+    {
+        $path = $user->getStoragePrefix() . '/' . $this->uploadsDir . '/' . $filename;
+        $user->files()->updateOrCreate(['path' => $path], [
+            'name' => pathinfo($filename, PATHINFO_FILENAME),
+            'size' => Storage::size($path),
+            'mime_type' => Storage::mimeType($path),
+            'extension' => pathinfo($filename, PATHINFO_EXTENSION),
+            'path' => $path
+        ]);
+    }
 }
