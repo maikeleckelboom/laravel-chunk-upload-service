@@ -20,36 +20,25 @@ class FileController extends Controller
     private string $chunksDirName = 'chunks';
     private string $uploadsDirName = 'uploads';
 
-    public function upload(Request $request)
+    public function upload(ChunkUploadRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'filename' => 'required|string',
-            'currentChunk' => 'required|file',
-            'totalChunks' => 'required|integer',
-            'chunkIndex' => 'required|integer',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error-validation',
-                'message' => $validator->errors()->first(),
-                'errors' => $validator->errors(),
-            ], Response::HTTP_BAD_REQUEST);
-        }
-
         $user = $request->user();
+        $identifier = $request->input('identifier');
         $filename = $request->input('filename');
         $chunkIndex = (int)$request->input('chunkIndex');
         $totalChunks = (int)$request->input('totalChunks');
         $currentChunk = $request->file('currentChunk');
 
-        $chunkPath = $user->getStoragePath() . '/' . $this->chunksDirName;
-        $chunkFilename = $filename . '.' . $chunkIndex;
-        $currentChunk->storeAs($chunkPath, $chunkFilename);
+        $chunkPath = $user->getStoragePrefix() . '/' . $this->chunksDirName;
+
+        $currentChunk->storeAs($chunkPath, "{$identifier}.{$chunkIndex}");
 
         $chunkNumber = ++$chunkIndex;
 
-        $upload = $user->uploads()->updateOrCreate(['filename' => $filename], [
+        $upload = $user->uploads()->updateOrCreate([
+            'identifier' => $identifier,
+            'filename' => $filename
+        ], [
             'total_chunks' => $totalChunks,
             'uploaded_chunks' => $chunkNumber,
             'status' => 'pending'
@@ -64,7 +53,8 @@ class FileController extends Controller
         }
 
         try {
-            $this->assembleChunks($filename, $totalChunks);
+            $this->assembleChunks($identifier, $filename, $totalChunks);
+
             $upload->delete();
 
             return response([
@@ -80,15 +70,19 @@ class FileController extends Controller
         }
     }
 
-    private function assembleChunks(string $filename, int $totalChunks)
+    private function assembleChunks(string $identifier, string $filename, int $totalChunks)
     {
-        $storagePath = Auth::user()->getStoragePath();
-        $source = $storagePath . '/' . $this->chunksDirName . '/' . $filename;
-        $destination = $storagePath . '/' . $this->uploadsDirName . '/' . $filename;
+        $storagePrefix = Auth::user()->getStoragePrefix();
+        $sourcePath = "$storagePrefix/{$this->chunksDirName}/$identifier";
+        $destination = "{$storagePrefix}/{$this->uploadsDirName}/$filename";
 
         for ($i = 0; $i < $totalChunks; $i++) {
-            Storage::move($source . '.' . $i, $destination);
+            Storage::move("$sourcePath.$i", $destination);
         }
+    }
+
+    public function pause(Request $request, string $identifier)
+    {
 
     }
 
@@ -109,5 +103,6 @@ class FileController extends Controller
             'message' => 'uploaded ' . $upload->uploaded_chunks . ' of ' . $upload->total_chunks . ' chunks.',
         ], Response::HTTP_OK);
     }
+
 
 }

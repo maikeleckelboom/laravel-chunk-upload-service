@@ -2,9 +2,7 @@
 
 namespace App\Providers;
 
-use App\Models\Upload;
 use App\Models\User;
-use App\Observers\UploadObserver;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\ServiceProvider;
 
@@ -28,9 +26,6 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->tryLoginTestUser();
-
-        // observe the Upload model
-        Upload::observe(UploadObserver::class);
     }
 
 

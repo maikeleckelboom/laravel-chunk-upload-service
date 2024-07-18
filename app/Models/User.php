@@ -60,7 +60,7 @@ class User extends Authenticatable
     }
 
 
-    public function getStoragePath(): string
+    public function getStoragePrefix(): string
     {
         return "users/{$this->id}";
     }
@@ -70,7 +70,7 @@ class User extends Authenticatable
      */
     public function getStorageInstance(): Filesystem|FilesystemAdapter
     {
-        $root = storage_path("app/" . $this->getStoragePath());
+        $root = storage_path("app/" . $this->getStoragePrefix());
 
         if (!is_writable($root)) {
             mkdir($root, 0777, true);

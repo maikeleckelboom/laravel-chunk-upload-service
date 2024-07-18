@@ -52,7 +52,7 @@ class ClearStorageCommand extends Command
 
     private function clearUserStorage(User $user): int
     {
-        $storagePath = storage_path("app/" . $user->getStoragePath());
+        $storagePath = storage_path("app/" . $user->getStoragePrefix());
 
         if (!$this->storageExists($storagePath)) {
             $this->error("Storage for user {$user->id} not found.");

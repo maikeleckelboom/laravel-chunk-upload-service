@@ -23,10 +23,11 @@ class ChunkUploadRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'identifier' => 'required|string',
             'filename' => 'required|string',
             'currentChunk' => 'required|file',
             'totalChunks' => 'required|integer',
-            'chunkIndex' => 'required|integer'
+            'chunkIndex' => 'required|integer',
         ];
     }
 }

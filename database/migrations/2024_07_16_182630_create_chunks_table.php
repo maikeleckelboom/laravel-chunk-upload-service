@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Upload;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,9 +15,7 @@ return new class extends Migration {
             $table->id();
             $table->binary('chunk');
             $table->integer('chunk_index');
-
-
-            $table->foreignIdFor(\App\Models\File::class)->constrained();
+            $table->foreignIdFor(Upload::class)->constrained();
             $table->timestamps();
         });
     }
