@@ -54,18 +54,23 @@ class User extends Authenticatable
         return $this->hasMany(File::class);
     }
 
+    public function uploads(): HasMany
+    {
+        return $this->hasMany(Upload::class);
+    }
 
-  public function getStoragePath(): string
-  {
-      return "users/{$this->id}";
-  }
+
+    public function getStoragePath(): string
+    {
+        return "users/{$this->id}";
+    }
 
     /**
      * Gets the storage instance for the user.
      */
     public function getStorageInstance(): Filesystem|FilesystemAdapter
     {
-        $root = storage_path("app/users/{$this->id}");
+        $root = storage_path("app/" . $this->getStoragePath());
 
         if (!is_writable($root)) {
             mkdir($root, 0777, true);
