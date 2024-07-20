@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignIdFor(User::class)->constrained();
             $table->string('name');
-            $table->integer('size');
+            $table->unsignedBigInteger('size');
             $table->string('mime_type');
             $table->string('extension');
             $table->string('path')->unique()->nullable();

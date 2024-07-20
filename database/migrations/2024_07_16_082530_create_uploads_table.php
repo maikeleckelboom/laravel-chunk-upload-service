@@ -15,9 +15,10 @@ return new class extends Migration {
             $table->id();
             $table->string('file_name');
             $table->string('file_path');
-            $table->string('identifier')->unique();
+            $table->string('identifier');
             $table->integer('total_chunks');
             $table->integer('uploaded_chunks')->default(0);
+            // queued
             $table->enum('status', ['pending', 'completed', 'paused', 'failed'])->default('pending');
             $table->foreignIdFor(User::class)->constrained();
             $table->softDeletes();

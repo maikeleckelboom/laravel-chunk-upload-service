@@ -25,46 +25,55 @@ class FileController extends Controller
     {
         $files = Auth::user()->files()->get();
 
-        $collection = collect($files)->map(fn($file) => [
-            ...$file->except('created_at', 'updated_at'),
-            'created_at' => Carbon::parse($file->created_at)->toDateTimeString(),
-            'updated_at' => Carbon::parse($file->updated_at)->diffForHumans()
-        ]);
+        $collection = collect($files)
+            ->map(fn($file) => [
+                ...collect($file)->except('created_at', 'updated_at')->toArray(),
+                'created_at' => Carbon::parse($file->created_at)->toDateTimeString(),
+                'updated_at' => Carbon::parse($file->updated_at)->diffForHumans()
+            ])
+            ->sortByDesc('updated_at')
+            ->values();
+
 
         return response()->json($collection->toArray());
     }
 
     public function upload(ChunkUploadRequest $request)
     {
-        $user = $request->user();
         $fileName = $request->input('fileName');
         $identifier = $request->input('identifier');
         $chunkIndex = (int)$request->input('chunkIndex');
         $totalChunks = (int)$request->input('totalChunks');
         $currentChunk = $request->file('currentChunk');
 
+        $user = $request->user();
         $chunksPath = $user->getStoragePrefix() . '/' . $this->chunksDir;
 
         $currentChunk->storeAs($chunksPath, "{$identifier}/{$fileName}.{$chunkIndex}");
+        $uploadedChunks = $chunkIndex + 1;
+
 
         $upload = $user->uploads()->updateOrCreate(['identifier' => $identifier], [
             'file_name' => $fileName,
-            'file_path' => $chunksPath,
+            'file_path' => "{$chunksPath}/{$identifier}/$fileName",
             'total_chunks' => $totalChunks,
-            'uploaded_chunks' => $chunkIndex + 1,
+            'uploaded_chunks' => $uploadedChunks
         ]);
+
 
         $upload->chunks()->updateOrCreate(['index' => $chunkIndex], [
             'path' => "{$chunksPath}/{$identifier}/{$fileName}.{$chunkIndex}",
             'size' => $currentChunk->getSize()
         ]);
 
-        $uploadedChunks = $upload->uploaded_chunks;
+        $progress = $this->calculateProgress($uploadedChunks, $totalChunks);
 
         if ($uploadedChunks < $totalChunks) {
+            logger()->info("Progress: $progress%");
+            logger()->info("Chunk $uploadedChunks of $totalChunks uploaded for $identifier");
             return response([
                 'status' => 'pending',
-                'progress' => $this->calculateProgress($uploadedChunks, $totalChunks),
+                'progress' => $progress,
                 'identifier' => $identifier
             ], Response::HTTP_OK);
         }
@@ -73,8 +82,12 @@ class FileController extends Controller
         // ______________________________________
         try {
             $this->assembleChunks($identifier, $fileName, $totalChunks);
+
             $file = $this->createFileRecord($user, $fileName);
+
             $this->deleteChunksAndUpload($upload);
+
+            logger()->info("Upload $identifier completed", ['file' => $file->path]);
 
             return response([
                 'status' => 'completed',
@@ -91,7 +104,7 @@ class FileController extends Controller
                 'status' => 'failed',
                 'reason' => $e->getMessage(),
                 'identifier' => $identifier,
-                'progress' => $this->calculateProgress($uploadedChunks, $totalChunks),
+                'progress' => $progress
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -103,7 +116,7 @@ class FileController extends Controller
      */
     private function calculateProgress(int $uploadedChunks, int $totalChunks): float
     {
-        return $uploadedChunks / $totalChunks * 100;
+        return ($uploadedChunks / $totalChunks) * 100;
     }
 
     /**
@@ -118,17 +131,16 @@ class FileController extends Controller
         }
 
         $storagePrefix = Auth::user()->getStoragePrefix();
-        $sourcePath = "$storagePrefix/{$this->chunksDir}/$identifier/$fileName";
         $destinationPath = "$storagePrefix/{$this->uploadsDir}/$fileName";
 
         if (!Storage::directoryExists("$storagePrefix/{$this->uploadsDir}")) {
-            Storage::makeDirectory($storagePrefix . '/' . $this->uploadsDir);
+            Storage::makeDirectory("$storagePrefix/{$this->uploadsDir}");
         }
 
         $destinationFile = fopen(storage_path("app/$destinationPath"), 'wb');
 
         for ($i = 0; $i < $totalChunks; $i++) {
-            $chunk = fopen(storage_path("app/$sourcePath.$i"), 'rb');
+            $chunk = fopen(storage_path("app/{$upload->file_path}.$i"), 'rb');
             stream_copy_to_stream($chunk, $destinationFile);
             fclose($chunk);
         }
@@ -149,17 +161,30 @@ class FileController extends Controller
         ]);
     }
 
-    /**
-     * @param Upload $upload
-     * @return void
-     */
-    private function deleteChunksAndUpload(Upload $upload): void
+    private function deleteChunksAndUpload(Upload $upload, bool $forceDelete = false): void
     {
-        DB::transaction(function () use ($upload) {
-            $upload->update(['status' => 'completed']);
+        $upload->update(['status' => 'completed']);
+
+        DB::transaction(function () use ($forceDelete, $upload) {
+            if ($forceDelete) {
+                $upload->chunks()->forceDelete();
+                $upload->forceDelete();
+                return;
+            }
             $upload->chunks()->delete();
             $upload->delete();
         });
+    }
+
+    public function delete(Request $request, int $id)
+    {
+        $file = Auth::user()->files()->findOrFail($id);
+
+        Storage::delete($file->path);
+
+        $file->delete();
+
+        return response(null, Response::HTTP_NO_CONTENT);
     }
 
     public function abort(Request $request, string $identifier)
@@ -171,11 +196,9 @@ class FileController extends Controller
             return response(null, Response::HTTP_NO_CONTENT);
         }
 
-        Storage::deleteDirectory(
-            $user->getStoragePrefix() . '/' . $this->chunksDir . '/' . $identifier
-        );
+        Storage::deleteDirectory($upload->file_path);
 
-        $this->deleteChunksAndUpload($upload);
+        $this->deleteChunksAndUpload($upload, true);
 
         return response(null, Response::HTTP_NO_CONTENT);
     }
@@ -194,4 +217,18 @@ class FileController extends Controller
         return response(null, Response::HTTP_NO_CONTENT);
     }
 
+    public function status(Request $request, string $identifier)
+    {
+        $user = $request->user();
+        $upload = $user->uploads()->where('identifier', $identifier)->first();
+
+        if (!$upload) {
+            return response(null, Response::HTTP_NO_CONTENT);
+        }
+
+        return response([
+            'status' => $upload->status,
+            'progress' => $this->calculateProgress($upload->uploaded_chunks, $upload->total_chunks)
+        ], Response::HTTP_OK);
+    }
 }
