@@ -26,12 +26,12 @@ class FileController extends Controller
         $files = Auth::user()->files()->get();
 
         $collection = collect($files)
+            ->sortByDesc('updated_at')
             ->map(fn($file) => [
                 ...collect($file)->except('created_at', 'updated_at')->toArray(),
-                'created_at' => Carbon::parse($file->created_at)->toDateTimeString(),
+                'created_at' => Carbon::parse($file->created_at)->diffForHumans(),
                 'updated_at' => Carbon::parse($file->updated_at)->diffForHumans()
             ])
-            ->sortByDesc('updated_at')
             ->values();
 
 
@@ -53,8 +53,8 @@ class FileController extends Controller
         $uploadedChunks = $chunkIndex + 1;
 
         $upload = $user->uploads()->updateOrCreate(['identifier' => $identifier], [
+            'path' => "{$chunksPath}/{$identifier}/$fileName",
             'file_name' => $fileName,
-            'file_path' => "{$chunksPath}/{$identifier}/$fileName",
             'total_chunks' => $totalChunks,
             'uploaded_chunks' => $uploadedChunks
         ]);
@@ -67,10 +67,6 @@ class FileController extends Controller
         $progress = $this->calculateProgress($uploadedChunks, $totalChunks);
 
         if ($uploadedChunks < $totalChunks) {
-            logger()->info("Chunk $uploadedChunks of $totalChunks uploaded for $identifier", [
-                'file' => $fileName,
-                'progress' => $progress
-            ]);
             return response([
                 'status' => 'pending',
                 'progress' => $progress,
@@ -132,7 +128,7 @@ class FileController extends Controller
         $resource = fopen(storage_path("app/{$uploadsDir}/$fileName"), 'wb');
 
         for ($i = 0; $i < $totalChunks; $i++) {
-            $chunk = fopen(storage_path("app/{$upload->file_path}.$i"), 'rb');
+            $chunk = fopen(storage_path("app/{$upload->path}.$i"), 'rb');
             stream_copy_to_stream($chunk, $resource);
             fclose($chunk);
         }
@@ -144,7 +140,7 @@ class FileController extends Controller
     {
         $path = $user->getStoragePrefix() . '/' . $this->uploadsDir . '/' . $fileName;
 
-        return $user->files()->updateOrCreate(['path' => $path], [
+        return $user->files()->firstOrCreate(['path' => $path], [
             'name' => pathinfo($fileName, PATHINFO_FILENAME),
             'size' => Storage::size($path),
             'mime_type' => Storage::mimeType($path),
@@ -161,66 +157,34 @@ class FileController extends Controller
             if ($forceDelete) {
                 $upload->chunks()->forceDelete();
                 $upload->forceDelete();
-                return;
+            } else {
+                $upload->chunks()->delete();
+                $upload->delete();
             }
-            $upload->chunks()->delete();
-            $upload->delete();
         });
     }
 
     public function delete(Request $request, int $id)
     {
         $file = Auth::user()->files()->findOrFail($id);
-
         Storage::delete($file->path);
-
         $file->delete();
-
         return response(null, Response::HTTP_NO_CONTENT);
     }
 
     public function abort(Request $request, string $identifier)
     {
         $user = $request->user();
-        $upload = $user->uploads()->where('identifier', $identifier)->first();
-
-        if (!$upload) {
-            return response(null, Response::HTTP_NO_CONTENT);
-        }
-
-        Storage::deleteDirectory($upload->file_path);
-
+        $upload = $user->uploads()->where('identifier', $identifier)->firstOrFail();
+        Storage::deleteDirectory($upload->path);
         $this->deleteChunksAndUpload($upload, true);
-
         return response(null, Response::HTTP_NO_CONTENT);
     }
 
     public function pause(Request $request, string $identifier)
     {
-        $user = $request->user();
-        $upload = $user->uploads()->where('identifier', $identifier)->first();
-
-        if (!$upload) {
-            return response(null, Response::HTTP_NO_CONTENT);
-        }
-
+        $upload = $request->user()->uploads()->where('identifier', $identifier)->firstOrFail();
         $upload->update(['status' => 'paused']);
-
         return response(null, Response::HTTP_NO_CONTENT);
-    }
-
-    public function status(Request $request, string $identifier)
-    {
-        $user = $request->user();
-        $upload = $user->uploads()->where('identifier', $identifier)->first();
-
-        if (!$upload) {
-            return response(null, Response::HTTP_NO_CONTENT);
-        }
-
-        return response([
-            'status' => $upload->status,
-            'progress' => $this->calculateProgress($upload->uploaded_chunks, $upload->total_chunks)
-        ], Response::HTTP_OK);
     }
 }

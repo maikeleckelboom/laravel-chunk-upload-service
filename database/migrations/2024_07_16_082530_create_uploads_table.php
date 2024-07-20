@@ -13,12 +13,11 @@ return new class extends Migration {
     {
         Schema::create('uploads', function (Blueprint $table) {
             $table->id();
-            $table->string('file_name');
-            $table->string('file_path');
+            $table->string('path');
             $table->string('identifier');
+            $table->string('file_name');
             $table->integer('total_chunks');
             $table->integer('uploaded_chunks')->default(0);
-            // queued
             $table->enum('status', ['pending', 'completed', 'paused', 'failed'])->default('pending');
             $table->foreignIdFor(User::class)->constrained();
             $table->softDeletes();
