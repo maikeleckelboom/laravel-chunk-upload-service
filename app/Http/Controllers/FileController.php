@@ -52,14 +52,12 @@ class FileController extends Controller
         $currentChunk->storeAs($chunksPath, "{$identifier}/{$fileName}.{$chunkIndex}");
         $uploadedChunks = $chunkIndex + 1;
 
-
         $upload = $user->uploads()->updateOrCreate(['identifier' => $identifier], [
             'file_name' => $fileName,
             'file_path' => "{$chunksPath}/{$identifier}/$fileName",
             'total_chunks' => $totalChunks,
             'uploaded_chunks' => $uploadedChunks
         ]);
-
 
         $upload->chunks()->updateOrCreate(['index' => $chunkIndex], [
             'path' => "{$chunksPath}/{$identifier}/{$fileName}.{$chunkIndex}",
@@ -69,8 +67,10 @@ class FileController extends Controller
         $progress = $this->calculateProgress($uploadedChunks, $totalChunks);
 
         if ($uploadedChunks < $totalChunks) {
-            logger()->info("Progress: $progress%");
-            logger()->info("Chunk $uploadedChunks of $totalChunks uploaded for $identifier");
+            logger()->info("Chunk $uploadedChunks of $totalChunks uploaded for $identifier", [
+                'file' => $fileName,
+                'progress' => $progress
+            ]);
             return response([
                 'status' => 'pending',
                 'progress' => $progress,
@@ -78,24 +78,16 @@ class FileController extends Controller
             ], Response::HTTP_OK);
         }
 
-        // All chunks have been uploaded
-        // ______________________________________
         try {
             $this->assembleChunks($identifier, $fileName, $totalChunks);
-
             $file = $this->createFileRecord($user, $fileName);
-
             $this->deleteChunksAndUpload($upload);
-
-            logger()->info("Upload $identifier completed", ['file' => $file->path]);
-
             return response([
                 'status' => 'completed',
                 'progress' => 100,
                 'identifier' => $identifier,
-                'file' => $file
+                'uploadedFile' => $file
             ], Response::HTTP_CREATED);
-
         } catch (Exception $e) {
 
             $upload->update(['status' => 'failed']);
@@ -124,28 +116,28 @@ class FileController extends Controller
      */
     private function assembleChunks(string $identifier, string $fileName, int $totalChunks)
     {
-        $upload = Auth::user()->uploads()->where('identifier', $identifier)->firstOrFail();
+        $user = Auth::user();
+        $upload = $user->uploads()->where('identifier', $identifier)->firstOrFail();
 
-        if ($upload->chunks()->count() !== $totalChunks) {
+        if ($upload->chunks()->count() < $totalChunks) {
             throw new Exception("Missing chunks for upload $identifier");
         }
 
-        $storagePrefix = Auth::user()->getStoragePrefix();
-        $destinationPath = "$storagePrefix/{$this->uploadsDir}/$fileName";
+        $uploadsDir = $user->getStoragePrefix() . '/' . $this->uploadsDir;
 
-        if (!Storage::directoryExists("$storagePrefix/{$this->uploadsDir}")) {
-            Storage::makeDirectory("$storagePrefix/{$this->uploadsDir}");
+        if (!Storage::directoryExists($uploadsDir)) {
+            Storage::makeDirectory($uploadsDir);
         }
 
-        $destinationFile = fopen(storage_path("app/$destinationPath"), 'wb');
+        $resource = fopen(storage_path("app/{$uploadsDir}/$fileName"), 'wb');
 
         for ($i = 0; $i < $totalChunks; $i++) {
             $chunk = fopen(storage_path("app/{$upload->file_path}.$i"), 'rb');
-            stream_copy_to_stream($chunk, $destinationFile);
+            stream_copy_to_stream($chunk, $resource);
             fclose($chunk);
         }
 
-        fclose($destinationFile);
+        fclose($resource);
     }
 
     private function createFileRecord(User $user, string $fileName): File
