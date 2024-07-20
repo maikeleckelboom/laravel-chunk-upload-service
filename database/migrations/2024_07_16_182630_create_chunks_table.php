@@ -15,8 +15,7 @@ return new class extends Migration {
             $table->id();
             $table->string('path');
             $table->integer('size')->unsigned();
-            // todo: change column name to `index`
-            $table->integer('number')->unsigned();
+            $table->integer('index')->unsigned();
             $table->foreignIdFor(Upload::class)->constrained();
             $table->softDeletes();
             $table->timestamps();

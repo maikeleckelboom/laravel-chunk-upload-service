@@ -6,6 +6,7 @@ use App\Http\Requests\ChunkUploadRequest;
 use App\Models\File;
 use App\Models\Upload;
 use App\Models\User;
+use Carbon\Carbon;
 use DB;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +24,14 @@ class FileController extends Controller
     public function index(Request $request)
     {
         $files = Auth::user()->files()->get();
-        return response()->json($files);
+
+        $collection = collect($files)->map(fn($file) => [
+            ...$file->except('created_at', 'updated_at'),
+            'created_at' => Carbon::parse($file->created_at)->toDateTimeString(),
+            'updated_at' => Carbon::parse($file->updated_at)->diffForHumans()
+        ]);
+
+        return response()->json($collection->toArray());
     }
 
     public function upload(ChunkUploadRequest $request)
@@ -31,35 +39,37 @@ class FileController extends Controller
         $user = $request->user();
         $fileName = $request->input('fileName');
         $identifier = $request->input('identifier');
-        $chunkNumber = (int)$request->input('chunkNumber');
+        $chunkIndex = (int)$request->input('chunkIndex');
         $totalChunks = (int)$request->input('totalChunks');
         $currentChunk = $request->file('currentChunk');
 
         $chunksPath = $user->getStoragePrefix() . '/' . $this->chunksDir;
 
-        $currentChunk->storeAs($chunksPath, "{$identifier}/{$fileName}.{$chunkNumber}");
+        $currentChunk->storeAs($chunksPath, "{$identifier}/{$fileName}.{$chunkIndex}");
 
         $upload = $user->uploads()->updateOrCreate(['identifier' => $identifier], [
             'file_name' => $fileName,
+            'file_path' => $chunksPath,
             'total_chunks' => $totalChunks,
-            'uploaded_chunks' => $chunkNumber,
+            'uploaded_chunks' => $chunkIndex + 1,
         ]);
 
-        $upload->chunks()->updateOrCreate(['number' => $chunkNumber], [
-            'path' => "{$chunksPath}/{$identifier}/{$fileName}.{$chunkNumber}",
+        $upload->chunks()->updateOrCreate(['index' => $chunkIndex], [
+            'path' => "{$chunksPath}/{$identifier}/{$fileName}.{$chunkIndex}",
             'size' => $currentChunk->getSize()
         ]);
 
-        if ($chunkNumber !== $totalChunks) {
+        $uploadedChunks = $upload->uploaded_chunks;
+
+        if ($uploadedChunks < $totalChunks) {
             return response([
                 'status' => 'pending',
-                'progress' => $this->calculateProgress($chunkNumber, $totalChunks),
-                'identifier' => $identifier,
+                'progress' => $this->calculateProgress($uploadedChunks, $totalChunks),
+                'identifier' => $identifier
             ], Response::HTTP_OK);
         }
 
         // All chunks have been uploaded
-        // Assemble chunks and create file record
         // ______________________________________
         try {
             $this->assembleChunks($identifier, $fileName, $totalChunks);
@@ -68,8 +78,8 @@ class FileController extends Controller
 
             return response([
                 'status' => 'completed',
+                'progress' => 100,
                 'identifier' => $identifier,
-                'progress' => $this->calculateProgress($chunkNumber, $totalChunks),
                 'file' => $file
             ], Response::HTTP_CREATED);
 
@@ -81,7 +91,7 @@ class FileController extends Controller
                 'status' => 'failed',
                 'reason' => $e->getMessage(),
                 'identifier' => $identifier,
-                'progress' => $this->calculateProgress($chunkNumber, $totalChunks),
+                'progress' => $this->calculateProgress($uploadedChunks, $totalChunks),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -108,16 +118,16 @@ class FileController extends Controller
         }
 
         $storagePrefix = Auth::user()->getStoragePrefix();
-        $sourcePath = "$storagePrefix/{$this->chunksDir}/$identifier/{$fileName}";
-        $destination = "{$storagePrefix}/{$this->uploadsDir}/$fileName";
+        $sourcePath = "$storagePrefix/{$this->chunksDir}/$identifier/$fileName";
+        $destinationPath = "$storagePrefix/{$this->uploadsDir}/$fileName";
 
-        if (!Storage::directoryExists($storagePrefix . '/' . $this->uploadsDir)) {
+        if (!Storage::directoryExists("$storagePrefix/{$this->uploadsDir}")) {
             Storage::makeDirectory($storagePrefix . '/' . $this->uploadsDir);
         }
 
-        $destinationFile = fopen(storage_path("app/$destination"), 'wb');
+        $destinationFile = fopen(storage_path("app/$destinationPath"), 'wb');
 
-        for ($i = 1; $i <= $totalChunks; $i++) {
+        for ($i = 0; $i < $totalChunks; $i++) {
             $chunk = fopen(storage_path("app/$sourcePath.$i"), 'rb');
             stream_copy_to_stream($chunk, $destinationFile);
             fclose($chunk);
@@ -165,11 +175,7 @@ class FileController extends Controller
             $user->getStoragePrefix() . '/' . $this->chunksDir . '/' . $identifier
         );
 
-        foreach ($upload->chunks as $chunk) {
-            $chunk->delete();
-        }
-
-        $upload->delete();
+        $this->deleteChunksAndUpload($upload);
 
         return response(null, Response::HTTP_NO_CONTENT);
     }

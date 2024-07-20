@@ -14,6 +14,7 @@ return new class extends Migration {
         Schema::create('uploads', function (Blueprint $table) {
             $table->id();
             $table->string('file_name');
+            $table->string('file_path');
             $table->string('identifier')->unique();
             $table->integer('total_chunks');
             $table->integer('uploaded_chunks')->default(0);
