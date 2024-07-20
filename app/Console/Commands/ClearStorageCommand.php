@@ -46,7 +46,8 @@ class ClearStorageCommand extends Command
             });
         }
 
-        $this->info("All storages have been cleared.");
+        // $this->info("All storages have been cleared.");
+
         return self::SUCCESS_CODE;
     }
 

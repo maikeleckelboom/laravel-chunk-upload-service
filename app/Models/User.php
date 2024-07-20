@@ -59,7 +59,6 @@ class User extends Authenticatable
         return $this->hasMany(Upload::class);
     }
 
-
     public function getStoragePrefix(): string
     {
         return "users/{$this->id}";

@@ -5,8 +5,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -14,12 +13,13 @@ return new class extends Migration
     {
         Schema::create('uploads', function (Blueprint $table) {
             $table->id();
-            $table->string('filename');
+            $table->string('file_name');
             $table->string('identifier')->unique();
             $table->integer('total_chunks');
             $table->integer('uploaded_chunks')->default(0);
-            $table->enum('status', ['paused', 'pending', 'failed'])->default('paused');
+            $table->enum('status', ['pending', 'completed', 'paused', 'failed'])->default('pending');
             $table->foreignIdFor(User::class)->constrained();
+            $table->softDeletes();
             $table->timestamps();
         });
     }
