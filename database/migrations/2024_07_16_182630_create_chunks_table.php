@@ -13,9 +13,9 @@ return new class extends Migration {
     {
         Schema::create('chunks', function (Blueprint $table) {
             $table->id();
-            $table->string('path');
-            $table->integer('size')->unsigned();
             $table->integer('index')->unsigned();
+            $table->integer('size')->unsigned();
+            $table->string('path');
             $table->foreignIdFor(Upload::class)->constrained();
             $table->softDeletes();
             $table->timestamps();

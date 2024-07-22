@@ -1,18 +1,23 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Data;
 
 use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
+use Spatie\LaravelData\Data;
 
-class ChunkUploadRequest extends FormRequest
+class UploadData extends Data
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
+    public function __construct(
+        public string       $fileName,
+        public string       $identifier,
+        public int          $chunkIndex,
+        public int          $totalChunks,
+        public int          $totalSize,
+        public UploadedFile $currentChunk,
+        public ?string      $chunkSize,
+    )
     {
-        return true;
     }
 
     /**
@@ -29,7 +34,7 @@ class ChunkUploadRequest extends FormRequest
             'totalChunks' => 'required|integer|min:1',
             'totalSize' => 'required|integer',
             'currentChunk' => 'required|file',
-            'chunkSize' => 'sometimes|integer',
+            'chunkSize' => 'integer',
         ];
     }
 }
