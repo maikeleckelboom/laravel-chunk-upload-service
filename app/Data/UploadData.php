@@ -15,7 +15,6 @@ class UploadData extends Data
         public int          $totalChunks,
         public int          $totalSize,
         public UploadedFile $currentChunk,
-        public ?string      $chunkSize,
     )
     {
     }
@@ -34,7 +33,7 @@ class UploadData extends Data
             'totalChunks' => 'required|integer|min:1',
             'totalSize' => 'required|integer',
             'currentChunk' => 'required|file',
-            'chunkSize' => 'integer',
+//            'chunkSize' => 'integer',
         ];
     }
 }
