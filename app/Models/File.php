@@ -9,8 +9,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class File extends Model
 {
-    use HasFactory;
-
     protected $guarded = false;
 
     public function user(): BelongsTo

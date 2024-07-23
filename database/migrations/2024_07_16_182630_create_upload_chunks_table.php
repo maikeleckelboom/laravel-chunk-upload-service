@@ -11,7 +11,7 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('chunks', function (Blueprint $table) {
+        Schema::create('upload_chunks', function (Blueprint $table) {
             $table->id();
             $table->integer('index')->unsigned();
             $table->integer('size')->unsigned();
@@ -27,6 +27,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('chunks');
+        Schema::dropIfExists('upload_chunks');
     }
 };

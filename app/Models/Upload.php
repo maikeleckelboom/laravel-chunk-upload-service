@@ -10,8 +10,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Upload extends Model
 {
-    use SoftDeletes;
-
     protected $guarded = [];
 
     public function user(): BelongsTo
@@ -21,6 +19,6 @@ class Upload extends Model
 
     public function chunks(): HasMany
     {
-        return $this->hasMany(Chunk::class);
+        return $this->hasMany(UploadChunk::class);
     }
 }

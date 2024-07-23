@@ -4,16 +4,16 @@ namespace App\Http\Services;
 
 use App\Models\File;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class FileService
 {
-    public function create(User $user, string $path): File
+    public function create(User $user, string $path): File|Model
     {
-        $fileName = pathinfo($path, PATHINFO_BASENAME);
         return $user->files()->firstOrCreate(['path' => $path], [
-            'name' => $fileName,
+            'name' => $fileName = pathinfo($path, PATHINFO_BASENAME),
             'size' => Storage::size($path),
             'mime_type' => Storage::mimeType($path),
             'extension' => pathinfo($fileName, PATHINFO_EXTENSION),
@@ -30,7 +30,7 @@ class FileService
         }
     }
 
-    public function deleteAll( ?User $user = null): void
+    public function deleteAll(?User $user = null): void
     {
         $user ??= Auth::user();
         $user->files()->get()->each(fn($file) => $this->delete($file->id, $user));

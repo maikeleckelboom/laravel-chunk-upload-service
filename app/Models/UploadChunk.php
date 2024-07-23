@@ -6,10 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Chunk extends Model
+class UploadChunk extends Model
 {
-    use SoftDeletes;
-
     protected $guarded = false;
 
     public function upload(): BelongsTo
