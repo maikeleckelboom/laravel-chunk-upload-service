@@ -18,21 +18,4 @@ class UploadData extends Data
     )
     {
     }
-
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, ValidationRule|array|string>
-     */
-    public static function rules(): array
-    {
-        return [
-            'fileName' => 'required|string',
-            'fileSize' => 'required|integer',
-            'identifier' => 'required|string',
-            'chunkIndex' => 'required|integer|min:0',
-            'totalChunks' => 'required|integer|min:1',
-            'currentChunk' => 'required|file',
-        ];
-    }
 }

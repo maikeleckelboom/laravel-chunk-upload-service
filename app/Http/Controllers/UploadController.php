@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Data\UploadData;
+use App\Enum\UploadStatus;
+use App\Http\Resources\UploadResource;
 use App\Http\Services\UploadService;
-use App\UploadStatus;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -30,7 +31,7 @@ class UploadController extends Controller
         );
 
         if (
-            $this->uploadService->hasUploadedAllChunks($upload) &&
+            $this->uploadService->isReadyToAssemble($upload) &&
             $this->uploadService->assembleChunks($upload)
         ) {
             $upload->status = UploadStatus::DONE;
@@ -38,34 +39,34 @@ class UploadController extends Controller
         }
 
         if ($upload->status === UploadStatus::PENDING) {
-            return response()->json([
-                'status' => $upload->status,
-                'progress' => ($upload->uploaded_chunks / $upload->total_chunks) * 100
-            ]);
+            return response()->json(
+                UploadResource::make($upload),
+                Response::HTTP_OK
+            );
         }
 
-        $file = $this->uploadService->createFileForUpload($upload);
+        $this->uploadService->createFile($upload);
+        $this->uploadService->cleanupAndDelete($upload);
 
-        if($file->exists()){
-            $this->uploadService->delete($upload);
-        }
-
-        return response()->json([
-            'status' => $upload->status,
-            'progress' => 100,
-            'file' => $file->toArray()
-        ]);
+        return response()->json(
+            UploadResource::make($upload),
+            Response::HTTP_CREATED
+        );
     }
 
     public function delete(Request $request, string $identifier)
     {
         $upload = $this->uploadService->find($request->user(), $identifier);
-        return response()->json($this->uploadService->delete($upload), Response::HTTP_OK);
+        $this->uploadService->cleanupAndDelete($upload);
+        return response()->json(null, Response::HTTP_OK);
     }
 
     public function pause(Request $request, string $identifier)
     {
         $upload = $this->uploadService->find($request->user(), $identifier);
-        return response()->json($this->uploadService->pause($upload), Response::HTTP_OK);
+        if ($upload && $upload->status === UploadStatus::PENDING) {
+            $this->uploadService->pause($upload);
+        }
+        return response()->json(null, Response::HTTP_OK);
     }
 }

@@ -3,10 +3,10 @@
 namespace App\Http\Services;
 
 use App\Data\UploadData;
+use App\Enum\UploadStatus;
 use App\Models\File;
 use App\Models\Upload;
 use App\Models\User;
-use App\UploadStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -18,12 +18,17 @@ class UploadService
 
     public function getUploadQueue(User $user): Collection
     {
-        return $user->uploads()->get()->map(fn(Upload $upload) => [
-            'identifier' => $upload->identifier,
-            'fileName' => $upload->file_name,
-            'status' => $upload->status,
-            'progress' => ($upload->uploaded_chunks / $upload->total_chunks) * 100
-        ]);
+        return $user->uploads()->get();
+    }
+
+    public function pause(Upload $upload): bool
+    {
+        return $upload->update(['status' => UploadStatus::PAUSED]);
+    }
+
+    public function find(User $user, string $identifier): Upload|null
+    {
+        return $user->uploads()->where('identifier', $identifier)->first();
     }
 
     public function uploadChunk(User $user, UploadData $data): Upload|false
@@ -34,16 +39,6 @@ class UploadService
             return false;
         }
 
-        return $this->createChunkWithUpload($user, $data, $path);
-    }
-
-    private function storeChunk(UploadData $data, string $path): false|string
-    {
-        return $data->currentChunk->storeAs($path, "{$data->fileName}.{$data->chunkIndex}");
-    }
-
-    private function createChunkWithUpload(User $user, UploadData $data, string $path)
-    {
         return DB::transaction(function () use ($user, $data, $path) {
             $upload = $this->createUpload($user, $data, $path);
             $this->createChunk($upload, $data);
@@ -51,10 +46,15 @@ class UploadService
         });
     }
 
-    public function createUpload(User $user, UploadData $data, string $uploadChunkPath): Upload
+    private function storeChunk(UploadData $data, string $path): false|string
+    {
+        return $data->currentChunk->storeAs($path, "{$data->fileName}.{$data->chunkIndex}");
+    }
+
+    public function createUpload(User $user, UploadData $data, string $path): Upload
     {
         return $user->uploads()->updateOrCreate(['identifier' => $data->identifier], [
-            'path' => $uploadChunkPath,
+            'path' => $path,
             'file_name' => $data->fileName,
             'total_chunks' => $data->totalChunks,
             'uploaded_chunks' => $data->chunkIndex + 1,
@@ -65,12 +65,12 @@ class UploadService
     public function createChunk(Upload $upload, UploadData $data)
     {
         return $upload->chunks()->updateOrCreate(['index' => $data->chunkIndex], [
-            'path' => "{$upload->path}/{$data->fileName}.{$data->chunkIndex}",
+            'path' => "{$upload->path}/{$upload->file_name}.{$data->chunkIndex}",
             'size' => $data->currentChunk->getSize()
         ]);
     }
 
-    public function hasUploadedAllChunks(Upload $upload): bool
+    public function isReadyToAssemble(Upload $upload): bool
     {
         return $upload->uploaded_chunks === $upload->total_chunks;
     }
@@ -90,33 +90,6 @@ class UploadService
         return fclose($resource);
     }
 
-
-    public function createFileForUpload(Upload $upload): File
-    {
-        $path = "{$upload->user->getStoragePrefix()}/{$this->filesDirectory}/{$upload->file_name}";
-        return (new FileService())->create($upload->user, $path);
-    }
-
-    public function pause(Upload $upload): bool
-    {
-        return $upload->update(['status' => UploadStatus::PAUSED]);
-    }
-
-    public function find(User $user, string $identifier): Upload
-    {
-        return $user->uploads()->where('identifier', $identifier)->firstOrFail();
-    }
-
-    public function delete(Upload $upload)
-    {
-        return DB::transaction(function () use ($upload) {
-            $chunks = $upload->chunks()->get();
-            $chunks->each(fn($chunk) => Storage::delete($chunk->path) && $chunk->delete());
-            Storage::deleteDirectory($upload->path);
-            $upload->delete() && $this->cleanupChunksDirectory($upload->user);
-        });
-    }
-
     private function prepareFilesDirectory(User $user): string
     {
         $uploadsDirectory = "{$user->getStoragePrefix()}/{$this->filesDirectory}";
@@ -126,6 +99,25 @@ class UploadService
         }
 
         return $uploadsDirectory;
+    }
+
+    public function createFile(Upload $upload): File
+    {
+        $filesDirectory = "{$upload->user->getStoragePrefix()}/{$this->filesDirectory}";
+        $file = (new FileService())->create($upload->user, "{$filesDirectory}/{$upload->file_name}");
+
+        $pathById = "{$filesDirectory}/{$file->id}";
+        Storage::move($file->path, "{$pathById}/{$upload->file_name}");
+        $file->update(['path' => $pathById]);
+
+        return $file;
+    }
+
+    public function cleanupAndDelete(Upload $upload): void
+    {
+        $upload->chunks()->get()->each(fn($chunk) => Storage::delete($chunk->path) && $chunk->delete());
+        Storage::deleteDirectory($upload->path);
+        $upload->delete() && $this->cleanupChunksDirectory($upload->user);
     }
 
     private function cleanupChunksDirectory(User $user): void

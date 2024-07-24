@@ -8,8 +8,8 @@ use Nette\Utils\FileSystem;
 
 class ClearStorageCommand extends Command
 {
-    private const ERROR_CODE = 1;
-    private const SUCCESS_CODE = 0;
+    private const int ERROR_CODE = 1;
+    private const int SUCCESS_CODE = 0;
 
     protected $signature = 'storage:clear {user_id?}';
     protected $description = 'clear all files and directories, optionally for a specific user.';
@@ -46,8 +46,6 @@ class ClearStorageCommand extends Command
             });
         }
 
-        // $this->info("All storages have been cleared.");
-
         return self::SUCCESS_CODE;
     }
 
@@ -56,13 +54,12 @@ class ClearStorageCommand extends Command
         $storagePath = storage_path("app/" . $user->getStoragePrefix());
 
         if (!$this->storageExists($storagePath)) {
-            $this->error("Storage for user {$user->id} not found.");
-            return self::ERROR_CODE;
+            return self::SUCCESS_CODE;
         }
 
         FileSystem::delete($storagePath);
 
-        $this->info("Storage for user {$user->id} has been cleared.");
+        $this->info("Cleared storage for user {$user->id}.");
 
         return self::SUCCESS_CODE;
     }

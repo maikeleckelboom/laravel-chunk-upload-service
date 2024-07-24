@@ -1,11 +1,11 @@
 <?php
 
-namespace App;
+namespace App\Enum;
 
 enum UploadStatus: string
 {
     case PENDING = 'pending';
-    case DONE = 'completed';
+    case DONE = 'done';
     case PAUSED = 'paused';
     case FAILED = 'failed';
 
