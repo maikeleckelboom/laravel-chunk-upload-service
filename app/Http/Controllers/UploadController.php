@@ -46,7 +46,6 @@ class UploadController extends Controller
         }
 
         $this->uploadService->createFile($upload);
-        $this->uploadService->cleanupAndDelete($upload);
 
         return response()->json(
             UploadResource::make($upload),

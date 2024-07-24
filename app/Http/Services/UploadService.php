@@ -8,12 +8,13 @@ use App\Models\File;
 use App\Models\Upload;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class UploadService
 {
-    private string $chunksDirectory = 'chunks';
+    private string $chunksDirectory = 'temp/chunks';
     private string $filesDirectory = 'files';
 
     public function getAll(User $user): Collection
@@ -44,6 +45,11 @@ class UploadService
             $this->createChunk($upload, $data);
             return $upload;
         });
+    }
+
+    private function storeChunk(UploadData $data, string $path): false|string
+    {
+        return $data->currentChunk->storeAs($path, "{$data->fileName}.{$data->chunkIndex}");
     }
 
     public function createUpload(User $user, UploadData $data, string $path): Upload
@@ -85,31 +91,6 @@ class UploadService
         return fclose($resource);
     }
 
-    public function createFile(Upload $upload): File
-    {
-        $filesDirectory = "{$upload->user->getStoragePrefix()}/{$this->filesDirectory}";
-        $file = (new FileService())->create($upload->user, "{$filesDirectory}/{$upload->file_name}");
-
-        $path = "{$filesDirectory}/{$file->id}/{$upload->file_name}";
-        Storage::move($file->path, $path);
-        $file->update(['path' => $path]);
-
-        return $file;
-    }
-
-    public function cleanupAndDelete(Upload $upload): void
-    {
-        $upload->chunks()->get()->each(fn($chunk) => Storage::delete($chunk->path) && $chunk->delete());
-        Storage::deleteDirectory($upload->path);
-        $upload->delete() && $this->cleanupChunksDirectory($upload->user);
-    }
-
-
-    private function storeChunk(UploadData $data, string $path): false|string
-    {
-        return $data->currentChunk->storeAs($path, "{$data->fileName}.{$data->chunkIndex}");
-    }
-
     private function prepareFilesDirectory(User $user): string
     {
         $uploadsDirectory = "{$user->getStoragePrefix()}/{$this->filesDirectory}";
@@ -119,6 +100,28 @@ class UploadService
         }
 
         return $uploadsDirectory;
+    }
+
+    public function createFile(Upload $upload): File
+    {
+        $filesDirectory = "{$upload->user->getStoragePrefix()}/{$this->filesDirectory}";
+        $file = (new FileService())->create($upload->user, "{$filesDirectory}/{$upload->file_name}");
+        $this->moveFile($file, "{$filesDirectory}/{$file->id}/{$upload->file_name}");
+        $this->cleanupAndDelete($upload);
+        return $file;
+    }
+
+    public function moveFile(Model|File $file, string $path): void
+    {
+        Storage::move($file->path, $path);
+        $file->update(['path' => $path]);
+    }
+
+    public function cleanupAndDelete(Upload $upload): void
+    {
+        $upload->chunks()->get()->each(fn($chunk) => Storage::delete($chunk->path) && $chunk->delete());
+        Storage::deleteDirectory($upload->path);
+        $upload->delete() && $this->cleanupChunksDirectory($upload->user);
     }
 
     private function cleanupChunksDirectory(User $user): void
