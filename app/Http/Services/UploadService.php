@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\Storage;
 
 class UploadService
 {
-    private string $chunksDirectory = 'temp/chunks';
+    private string $chunksDirectory = 'chunks';
     private string $filesDirectory = 'files';
 
-    public function getUploadQueue(User $user): Collection
+    public function getAll(User $user): Collection
     {
         return $user->uploads()->get();
     }
@@ -44,11 +44,6 @@ class UploadService
             $this->createChunk($upload, $data);
             return $upload;
         });
-    }
-
-    private function storeChunk(UploadData $data, string $path): false|string
-    {
-        return $data->currentChunk->storeAs($path, "{$data->fileName}.{$data->chunkIndex}");
     }
 
     public function createUpload(User $user, UploadData $data, string $path): Upload
@@ -90,17 +85,6 @@ class UploadService
         return fclose($resource);
     }
 
-    private function prepareFilesDirectory(User $user): string
-    {
-        $uploadsDirectory = "{$user->getStoragePrefix()}/{$this->filesDirectory}";
-
-        if (!Storage::directoryExists($uploadsDirectory)) {
-            Storage::makeDirectory($uploadsDirectory);
-        }
-
-        return $uploadsDirectory;
-    }
-
     public function createFile(Upload $upload): File
     {
         $filesDirectory = "{$upload->user->getStoragePrefix()}/{$this->filesDirectory}";
@@ -118,6 +102,23 @@ class UploadService
         $upload->chunks()->get()->each(fn($chunk) => Storage::delete($chunk->path) && $chunk->delete());
         Storage::deleteDirectory($upload->path);
         $upload->delete() && $this->cleanupChunksDirectory($upload->user);
+    }
+
+
+    private function storeChunk(UploadData $data, string $path): false|string
+    {
+        return $data->currentChunk->storeAs($path, "{$data->fileName}.{$data->chunkIndex}");
+    }
+
+    private function prepareFilesDirectory(User $user): string
+    {
+        $uploadsDirectory = "{$user->getStoragePrefix()}/{$this->filesDirectory}";
+
+        if (!Storage::directoryExists($uploadsDirectory)) {
+            Storage::makeDirectory($uploadsDirectory);
+        }
+
+        return $uploadsDirectory;
     }
 
     private function cleanupChunksDirectory(User $user): void

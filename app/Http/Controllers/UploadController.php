@@ -20,7 +20,7 @@ class UploadController extends Controller
 
     public function index(Request $request)
     {
-        return response()->json($this->uploadService->getUploadQueue($request->user()));
+        return response()->json($this->uploadService->getAll($request->user()));
     }
 
     public function upload(Request $request)
