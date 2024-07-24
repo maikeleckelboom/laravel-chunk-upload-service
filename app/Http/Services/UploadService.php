@@ -106,9 +106,9 @@ class UploadService
         $filesDirectory = "{$upload->user->getStoragePrefix()}/{$this->filesDirectory}";
         $file = (new FileService())->create($upload->user, "{$filesDirectory}/{$upload->file_name}");
 
-        $pathById = "{$filesDirectory}/{$file->id}";
-        Storage::move($file->path, "{$pathById}/{$upload->file_name}");
-        $file->update(['path' => $pathById]);
+        $path = "{$filesDirectory}/{$file->id}/{$upload->file_name}";
+        Storage::move($file->path, $path);
+        $file->update(['path' => $path]);
 
         return $file;
     }
