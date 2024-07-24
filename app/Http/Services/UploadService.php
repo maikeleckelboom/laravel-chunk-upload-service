@@ -57,6 +57,7 @@ class UploadService
         return $user->uploads()->updateOrCreate(['identifier' => $data->identifier], [
             'path' => $path,
             'file_name' => $data->fileName,
+            'file_size' => $data->fileSize,
             'total_chunks' => $data->totalChunks,
             'uploaded_chunks' => $data->chunkIndex + 1,
             'status' => UploadStatus::PENDING
@@ -71,9 +72,15 @@ class UploadService
         ]);
     }
 
-    public function isReadyToAssemble(Upload $upload): bool
+    public function hasUploadedAllChunks(Upload $upload): bool
     {
         return $upload->uploaded_chunks === $upload->total_chunks;
+    }
+
+    public function isTotalChunkSizeEqualToFileSize(Upload $upload): bool
+    {
+        $totalSize = $upload->chunks()->sum('size');
+        return (int)$totalSize === (int)$upload->file_size;
     }
 
     public function assembleChunks(Upload $upload): bool

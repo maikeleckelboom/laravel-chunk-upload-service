@@ -6,6 +6,8 @@ use App\Data\UploadData;
 use App\Enum\UploadStatus;
 use App\Http\Resources\UploadResource;
 use App\Http\Services\UploadService;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -23,6 +25,11 @@ class UploadController extends Controller
         return response()->json($this->uploadService->getAll($request->user()));
     }
 
+    /**
+     * @param Request $request
+     * @return JsonResponse
+     * @throws
+     */
     public function upload(Request $request)
     {
         $upload = $this->uploadService->uploadChunk(
@@ -31,7 +38,8 @@ class UploadController extends Controller
         );
 
         if (
-            $this->uploadService->isReadyToAssemble($upload) &&
+            $this->uploadService->hasUploadedAllChunks($upload) &&
+            $this->uploadService->isTotalChunkSizeEqualToFileSize($upload) &&
             $this->uploadService->assembleChunks($upload)
         ) {
             $upload->status = UploadStatus::DONE;
