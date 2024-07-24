@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Media;
 
+use App\Http\Controllers\Controller;
 use App\Http\Services\FileService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;

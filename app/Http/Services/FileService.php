@@ -2,7 +2,7 @@
 
 namespace App\Http\Services;
 
-use App\Models\File;
+use App\Models\Media\File;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;

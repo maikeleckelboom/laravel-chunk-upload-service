@@ -1,10 +1,9 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Media;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Chunk extends Model
 {

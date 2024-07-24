@@ -25,9 +25,15 @@ class AppServiceProvider extends ServiceProvider
             return config('app.frontend_url') . "/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
         });
 
+        $this->addMediaMigrations();
+
         $this->tryLoginTestUser();
     }
 
+    private function addMediaMigrations(): void
+    {
+        $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations/Media');
+    }
 
     private function tryLoginTestUser(): void
     {

@@ -4,8 +4,8 @@ namespace App\Http\Services;
 
 use App\Data\UploadData;
 use App\Enum\UploadStatus;
-use App\Models\File;
-use App\Models\Upload;
+use App\Models\Media\File;
+use App\Models\Media\Upload;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;

@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Media;
 
 use App\Data\UploadData;
 use App\Enum\UploadStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Resources\UploadResource;
 use App\Http\Services\UploadService;
-use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,11 +25,6 @@ class UploadController extends Controller
         return response()->json($this->uploadService->getAll($request->user()));
     }
 
-    /**
-     * @param Request $request
-     * @return JsonResponse
-     * @throws
-     */
     public function upload(Request $request)
     {
         $upload = $this->uploadService->uploadChunk(
@@ -61,13 +56,6 @@ class UploadController extends Controller
         );
     }
 
-    public function delete(Request $request, string $identifier)
-    {
-        $upload = $this->uploadService->find($request->user(), $identifier);
-        $this->uploadService->cleanupAndDelete($upload);
-        return response()->json(null, Response::HTTP_OK);
-    }
-
     public function pause(Request $request, string $identifier)
     {
         $upload = $this->uploadService->find($request->user(), $identifier);
@@ -76,4 +64,12 @@ class UploadController extends Controller
         }
         return response()->json(null, Response::HTTP_OK);
     }
+
+    public function delete(Request $request, string $identifier)
+    {
+        $upload = $this->uploadService->find($request->user(), $identifier);
+        $this->uploadService->cleanupAndDelete($upload);
+        return response()->json(null, Response::HTTP_OK);
+    }
+
 }
