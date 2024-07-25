@@ -19,6 +19,7 @@ return new class extends Migration {
             $table->string('path');
             $table->string('identifier');
             $table->string('file_name');
+            $table->string('file_type');
             $table->bigInteger('file_size')->unsigned();
             $table->integer('total_chunks')->unsigned();
             $table->integer('uploaded_chunks')->default(0);

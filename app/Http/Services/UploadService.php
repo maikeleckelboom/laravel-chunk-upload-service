@@ -57,6 +57,7 @@ class UploadService
         return $user->uploads()->updateOrCreate(['identifier' => $data->identifier], [
             'path' => $path,
             'file_name' => $data->fileName,
+            'file_type' => $data->fileType,
             'file_size' => $data->fileSize,
             'total_chunks' => $data->totalChunks,
             'uploaded_chunks' => $data->chunkIndex + 1,

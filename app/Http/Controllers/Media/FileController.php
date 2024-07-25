@@ -13,8 +13,8 @@ class FileController extends Controller
 {
     public function index(Request $request)
     {
-        $files = Auth::user()->files()->get();
-        return response()->json($files->toArray());
+        $files = Auth::user()->files()->paginate(50);
+        return response()->json($files->sortByDesc('created_at')->values()->all());
     }
 
     public function delete(Request $request, int $id, FileService $fileService)

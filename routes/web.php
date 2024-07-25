@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Media\FileController;
 use App\Http\Controllers\Media\UploadController;
+use App\Http\Controllers\StorageAccessController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -21,11 +22,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('/files', [FileController::class, 'index']);
     Route::delete('/file/{id}', [FileController::class, 'delete']);
 
-    // Storage
-    Route::get('/storage/{path}', function ($path) {
-         if (!auth()->user()->files()->where('path', $path)->exists()) {
-            abort(403);
-         }
-        return response()->file(storage_path('app/' . $path));
-    })->where('path', '.*');
+
+    Route::get('/storage/{path}', StorageAccessController::class)
+        ->where('path', '.*');
 });
