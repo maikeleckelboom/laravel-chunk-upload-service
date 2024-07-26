@@ -24,7 +24,7 @@ class UploadService
 
     public function pause(Upload $upload): bool
     {
-        return $upload->update(['status' => UploadStatus::PAUSED]);
+        return $upload->update(['status' => UploadStatus::QUEUED]);
     }
 
     public function find(User $user, string $identifier): Upload|null
@@ -73,7 +73,12 @@ class UploadService
         ]);
     }
 
-    public function hasUploadedAllChunks(Upload $upload): bool
+    public function isReadyToAssemble(Upload $upload): bool
+    {
+        return $this->isAllChunksUploaded($upload) && $this->isTotalChunkSizeEqualToFileSize($upload);
+    }
+
+    public function isAllChunksUploaded(Upload $upload): bool
     {
         return $upload->uploaded_chunks === $upload->total_chunks;
     }

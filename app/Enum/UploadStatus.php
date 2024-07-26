@@ -6,8 +6,8 @@ enum UploadStatus: string
 {
     case PENDING = 'pending';
     case DONE = 'done';
-    case PAUSED = 'paused';
     case FAILED = 'failed';
+    case QUEUED = 'queued';
 
     public static function toArray(): array
     {

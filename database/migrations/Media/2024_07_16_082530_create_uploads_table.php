@@ -20,12 +20,11 @@ return new class extends Migration {
             $table->string('identifier');
             $table->string('file_name');
             $table->string('file_type');
-            $table->bigInteger('file_size')->unsigned();
-            $table->integer('total_chunks')->unsigned();
-            $table->integer('uploaded_chunks')->default(0);
-            $table->enum('status', UploadStatus::toArray())->default(UploadStatus::PENDING);
+            $table->unsignedBigInteger('file_size');
+            $table->unsignedInteger('total_chunks');
+            $table->integer('uploaded_chunks')->default(0); // chunks_received
+            $table->enum('status', UploadStatus::toArray())->default(UploadStatus::QUEUED);
             $table->foreignIdFor(User::class)->constrained();
-            $table->softDeletes();
             $table->timestamps();
         });
     }

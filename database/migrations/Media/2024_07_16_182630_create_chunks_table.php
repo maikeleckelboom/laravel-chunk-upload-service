@@ -13,11 +13,10 @@ return new class extends Migration {
     {
         Schema::create('chunks', function (Blueprint $table) {
             $table->id();
-            $table->integer('index')->unsigned();
-            $table->bigInteger('size')->unsigned();
+            $table->unsignedInteger('index');
+            $table->unsignedBigInteger('size');
             $table->string('path');
             $table->foreignIdFor(Upload::class)->constrained();
-            $table->softDeletes();
             $table->timestamps();
         });
     }
