@@ -141,7 +141,6 @@ class UploadService
         }
     }
 
-
     public function pause(Upload $upload): bool
     {
         return $upload->update(['status' => UploadStatus::QUEUED]);
