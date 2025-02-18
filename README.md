@@ -1,6 +1,7 @@
 # Laravel Chunk Upload Service
 
-Note: Another version of this project is built right after this one using Laravel Media Library. You can find it here: laravel-chunk-upload-media-library.
+Note: Another version of this project is built right after this one using Laravel Media Library. You can find it here: 
+<a href="https://github.com/maikeleckelboom/laravel-chunk-upload-media-library">laravel-chunk-upload-media-library</a>
 
 **Laravel Chunk Upload Service** is a powerful
 package designed to simplify the process of uploading large files in Laravel applications. By breaking down files into smaller, manageable chunks, this service ensures reliable and efficient file transfers, even over unstable network connections.
