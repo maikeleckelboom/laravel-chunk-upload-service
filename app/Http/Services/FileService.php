@@ -20,12 +20,14 @@ class FileService
             'path' => $path
         ]);
     }
+    
     public function move(File $file, string $directory): void
     {
         $newPath = "{$directory}/{$file->name}";
         Storage::move($file->path, $newPath);
         $file->update(['path' => $newPath]);
     }
+    
     public function delete(int $id, ?User $user = null): void
     {
         $user ??= Auth::user();
