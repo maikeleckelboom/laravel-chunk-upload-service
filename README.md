@@ -1,6 +1,8 @@
 # Laravel Chunk Upload Service
 
-**Laravel Chunk Upload Service** is a powerful package designed to simplify the process of uploading large files in Laravel applications. By breaking down files into smaller, manageable chunks, this service ensures reliable and efficient file transfers, even over unstable network connections.
+**Laravel Chunk Upload S
+ervice** is a powerful
+package designed to simplify the process of uploading large files in Laravel applications. By breaking down files into smaller, manageable chunks, this service ensures reliable and efficient file transfers, even over unstable network connections.
 
 ## Key Features
 
@@ -36,7 +38,11 @@ This service is ideal for applications requiring robust handling of large file u
 Explore, contribute, and enjoy efficient file handling with the Laravel Chunk Upload Service.
 
 ## Usage
-![UploadControllerHighlightMethod.png](public/img/UploadControllerHighlightMethod.png)
+![UploadControllerStoreMethod.png](public/img/UploadControllerStoreMethod.png)
+![DataUploadDataPHP.png](public/img/DataUploadDataPHP.png)
+![UploadResource.png](public/img/UploadResource.png)
+![EnumUploadStatus.png](public/img/EnumUploadStatus.png)
+![FileControllerPHP.png](public/img/FileControllerPHP.png)
 
 ### `FileService` Documentation
 
