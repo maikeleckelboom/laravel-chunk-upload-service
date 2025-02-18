@@ -1,66 +1,174 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Chunk Upload Service
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Laravel Chunk Upload Service** is a powerful package designed to simplify the process of uploading large files in Laravel applications. By breaking down files into smaller, manageable chunks, this service ensures reliable and efficient file transfers, even over unstable network connections.
 
-## About Laravel
+## Key Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Chunked Uploads:** Splits large files into smaller chunks for improved reliability and easier error recovery.
+- **Resumable Uploads:** Supports pausing and resuming of uploads, allowing users to recover from interruptions.
+- **Parallel Uploads:** Supports uploading multiple chunks in parallel to speed up the process.
+- **Automatic Assembly:** Once all chunks have been received, the service automatically assembles them into the final file.
+- **Upload Management:** Provides endpoints to pause, delete, and monitor the status of uploads.
+- **Cleanup Mechanism:** Ensures temporary data is removed after uploads are complete or cancelled, keeping the system clean.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## How It Works
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. **Uploading Chunks:**  
+   Each file is divided into multiple chunks and sent to dedicated endpoints. The service stores each chunk temporarily on the server.
+2. **Validation & Assembly:**  
+   When all chunks have been uploaded, the system validates the complete file and merges the chunks into the final file.
+3. **Management & Cleanup:**  
+   Endpoints allow users to pause or cancel uploads, and the service cleans up any temporary data associated with incomplete uploads.
 
-## Learning Laravel
+## Getting Started
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **Installation:**  
+  Integrate the package into your Laravel project using Composer and configure it according to your application's needs.
+- **Usage:**  
+  Utilize the provided controllers (e.g., `UploadController`) and services (e.g., `UploadService`) to handle file uploads. These components manage chunk storage, assembly, and upload lifecycle operations.
+- **Documentation:**  
+  Detailed usage instructions and examples are available in the project documentation to help you get started quickly.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+This service is ideal for applications requiring robust handling of large file uploads—ensuring a seamless and reliable user experience.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+Explore, contribute, and enjoy efficient file handling with the Laravel Chunk Upload Service.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Usage
+![UploadControllerHighlightMethod.png](public/img/UploadControllerHighlightMethod.png)
 
-### Premium Partners
+### `FileService` Documentation
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+The `FileService` class provides methods to manage file operations such as creating, moving, and deleting files.
 
-## Contributing
+#### Methods
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- **create(User $user, string $path): File|Model**
+    - Creates a new file record for the given user and path if it doesn't already exist.
+    - **Parameters:**
+        - `User $user`: The user who owns the file.
+        - `string $path`: The path of the file.
+    - **Returns:** The created or existing `File` model.
 
-## Code of Conduct
+- **moveToDedicatedDirectory(File $file, string $directory): void**
+    - Moves the file to a specified directory and updates its path.
+    - **Parameters:**
+        - `File $file`: The file to be moved.
+        - `string $directory`: The target directory.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- **delete(int $id, ?User $user = null): void**
+    - Deletes a file by its ID for the given user.
+    - **Parameters:**
+        - `int $id`: The ID of the file to be deleted.
+        - `?User $user`: The user who owns the file. Defaults to the currently authenticated user.
 
-## Security Vulnerabilities
+- **deleteAll(?User $user = null): void**
+    - Deletes all files for the given user.
+    - **Parameters:**
+        - `?User $user`: The user whose files will be deleted. Defaults to the currently authenticated user.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### `UploadService` Documentation
 
-## License
+The `UploadService` class provides methods to manage file uploads, including chunked uploads, pausing, and assembling
+chunks.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+#### Properties
+
+- **$chunksDirectory**
+    - Directory for storing upload chunks.
+    - **Type:** `string`
+    - **Default:** `'temp/chunks'`
+
+- **$filesDirectory**
+    - Directory for storing assembled files.
+    - **Type:** `string`
+    - **Default:** `'files'`
+
+#### Methods
+
+- **getAll(User $user): Collection**
+    - Retrieves all uploads for the given user.
+    - **Parameters:**
+        - `User $user`: The user whose uploads will be retrieved.
+    - **Returns:** A collection of uploads.
+
+- **pause(Upload $upload): bool**
+    - Pauses an upload by updating its status to `QUEUED`.
+    - **Parameters:**
+        - `Upload $upload`: The upload to be paused.
+    - **Returns:** `true` if the update was successful, otherwise `false`.
+
+- **find(User $user, string $identifier): Upload|null**
+    - Finds an upload by its identifier for the given user.
+    - **Parameters:**
+        - `User $user`: The user who owns the upload.
+        - `string $identifier`: The identifier of the upload.
+    - **Returns:** The found `Upload` model or `null`.
+
+- **uploadChunk(User $user, UploadData $data): Upload|false**
+    - Uploads a chunk of a file.
+    - **Parameters:**
+        - `User $user`: The user who is uploading the chunk.
+        - `UploadData $data`: The data of the chunk being uploaded.
+    - **Returns:** The `Upload` model if successful, otherwise `false`.
+
+- **createUpload(User $user, UploadData $data, string $path): Upload**
+    - Creates or updates an upload record.
+    - **Parameters:**
+        - `User $user`: The user who owns the upload.
+        - `UploadData $data`: The data of the upload.
+        - `string $path`: The path where the upload is stored.
+    - **Returns:** The created or updated `Upload` model.
+
+- **createChunk(Upload $upload, UploadData $data)**
+    - Creates or updates a chunk record for an upload.
+    - **Parameters:**
+        - `Upload $upload`: The upload to which the chunk belongs.
+        - `UploadData $data`: The data of the chunk being created.
+
+- **isReadyToAssemble(Upload $upload): bool**
+    - Checks if an upload is ready to be assembled.
+    - **Parameters:**
+        - `Upload $upload`: The upload to be checked.
+    - **Returns:** `true` if the upload is ready to be assembled, otherwise `false`.
+
+- **isAllChunksUploaded(Upload $upload): bool**
+    - Checks if all chunks of an upload have been uploaded.
+    - **Parameters:**
+        - `Upload $upload`: The upload to be checked.
+    - **Returns:** `true` if all chunks are uploaded, otherwise `false`.
+
+- **isTotalChunkSizeEqualToFileSize(Upload $upload): bool**
+    - Checks if the total size of all chunks equals the file size.
+    - **Parameters:**
+        - `Upload $upload`: The upload to be checked.
+    - **Returns:** `true` if the sizes match, otherwise `false`.
+
+- **assembleChunks(Upload $upload): bool**
+    - Assembles all chunks of an upload into a single file.
+    - **Parameters:**
+        - `Upload $upload`: The upload to be assembled.
+    - **Returns:** `true` if the assembly was successful, otherwise `false`.
+
+- **createFile(Upload $upload): File**
+    - Creates a file record from an assembled upload.
+    - **Parameters:**
+        - `Upload $upload`: The upload to be converted into a file.
+    - **Returns:** The created `File` model.
+
+- **moveFile(Model|File $file, string $path): void**
+    - Moves a file to a new path and updates its record.
+    - **Parameters:**
+        - `Model|File $file`: The file to be moved.
+        - `string $path`: The new path for the file.
+
+- **cleanupAndDelete(Upload $upload): void**
+    - Cleans up and deletes an upload and its chunks.
+    - **Parameters:**
+        - `Upload $upload`: The upload to be deleted.
+
+- **cleanupChunksDirectory(User $user): void**
+    - Cleans up the chunks directory if it is empty.
+    - **Parameters:**
+        - `User $user`: The user whose chunks directory will be cleaned up.+

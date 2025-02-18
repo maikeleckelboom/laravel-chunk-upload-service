@@ -20,14 +20,12 @@ class FileService
             'path' => $path
         ]);
     }
-
-    public function moveToDedicatedDirectory(File $file, string $directory): void
+    public function move(File $file, string $directory): void
     {
         $newPath = "{$directory}/{$file->name}";
         Storage::move($file->path, $newPath);
         $file->update(['path' => $newPath]);
     }
-
     public function delete(int $id, ?User $user = null): void
     {
         $user ??= Auth::user();
@@ -35,11 +33,5 @@ class FileService
         if (Storage::delete($file->path)) {
             $file->delete();
         }
-    }
-
-    public function deleteAll(?User $user = null): void
-    {
-        $user ??= Auth::user();
-        $user->files()->get()->each(fn($file) => $this->delete($file->id, $user));
     }
 }

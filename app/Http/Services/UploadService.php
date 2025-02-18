@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class UploadService
 {
@@ -22,16 +23,9 @@ class UploadService
         return $user->uploads()->get();
     }
 
-    public function pause(Upload $upload): bool
-    {
-        return $upload->update(['status' => UploadStatus::QUEUED]);
-    }
-
-    public function find(User $user, string $identifier): Upload|null
-    {
-        return $user->uploads()->where('identifier', $identifier)->first();
-    }
-
+    /**
+     * @throws Throwable
+     */
     public function uploadChunk(User $user, UploadData $data): Upload|false
     {
         $path = "{$user->getStoragePrefix()}/{$this->chunksDirectory}/{$data->identifier}";
@@ -145,5 +139,16 @@ class UploadService
         if (Storage::directoryExists($chunksRootDirectory) && Storage::allFiles($chunksRootDirectory) === []) {
             Storage::deleteDirectory($chunksRootDirectory);
         }
+    }
+
+
+    public function pause(Upload $upload): bool
+    {
+        return $upload->update(['status' => UploadStatus::QUEUED]);
+    }
+
+    public function find(User $user, string $identifier): Upload|null
+    {
+        return $user->uploads()->where('identifier', $identifier)->first();
     }
 }

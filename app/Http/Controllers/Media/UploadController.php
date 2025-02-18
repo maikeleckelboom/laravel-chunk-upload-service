@@ -9,6 +9,7 @@ use App\Http\Resources\UploadResource;
 use App\Http\Services\UploadService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class UploadController extends Controller
 {
@@ -24,6 +25,9 @@ class UploadController extends Controller
         return response()->json($this->uploadService->getAll($request->user()));
     }
 
+    /**
+     * @throws Throwable
+     */
     public function store(Request $request)
     {
         $upload = $this->uploadService->uploadChunk(
@@ -55,16 +59,20 @@ class UploadController extends Controller
     public function delete(Request $request, string $identifier)
     {
         $upload = $this->uploadService->find($request->user(), $identifier);
+
         $this->uploadService->cleanupAndDelete($upload);
+
         return response()->json(null, Response::HTTP_OK);
     }
 
     public function pause(Request $request, string $identifier)
     {
         $upload = $this->uploadService->find($request->user(), $identifier);
+
         if ($upload && $upload->status === UploadStatus::PENDING) {
             $this->uploadService->pause($upload);
         }
+
         return response()->json(null, Response::HTTP_OK);
     }
 }
